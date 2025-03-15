@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { getAuth } from "firebase/auth";
-import { signInWithGoogle, logOut, signUpUser, loginUser } from "./firebaseConfig"; // Import the functions
+import { signInWithGoogle, logOut, signUpUser, loginUser } from "./firebaseConfig";
 import { getFirestore, doc, setDoc } from "firebase/firestore";
 import app from "./firebaseConfig";
+import { useNavigate } from "react-router-dom"; // Import useNavigate
 import "./Login.css";
 
 const auth = getAuth(app);
@@ -14,6 +15,7 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const navigate = useNavigate(); // Initialize useNavigate
 
   // Function to store user in Firestore
   const saveUserToFirestore = async (user) => {
@@ -57,6 +59,7 @@ const Login = () => {
       }
     } else {
       setUser(result.user);
+      navigate("/dashboard"); // Redirect to dashboard after successful login
     }
   };
 
@@ -65,6 +68,7 @@ const Login = () => {
     const loggedInUser = await signInWithGoogle();
     setUser(loggedInUser);
     await saveUserToFirestore(loggedInUser);
+    navigate("/dashboard"); // Redirect to dashboard after successful Google login
   };
 
   return (
