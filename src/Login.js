@@ -1,0 +1,129 @@
+import React, { useState } from "react";
+import { 
+  getAuth, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword 
+} from "firebase/auth";
+import { signInWithGoogle, logOut } from "./firebaseConfig"; // Ensure correct path
+import { getFirestore, doc, setDoc } from "firebase/firestore";
+import app from "./firebaseConfig"; // Firebase config
+import "./Login.css"; // Import CSS
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+const Login = () => {
+  const [user, setUser] = useState(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isSignUp, setIsSignUp] = useState(false);
+
+    // Function to store user in Firestore
+    const saveUserToFirestore = async (user) => {
+      if (!user) return;
+  
+      try {
+        const userRef = doc(db, "users", user.uid);
+        await setDoc(userRef, {
+          uid: user.uid,
+          email: user.email,
+          createdAt: new Date(),
+        });
+        console.log("User saved in Firestore");
+      } catch (error) {
+        console.error("Error saving user:", error);
+      }
+    };
+
+  // Handle Email/Password Authentication
+  const [errorMessage, setErrorMessage] = useState("");
+  const handleAuth = async () => {
+    try {
+      let userCredential;
+      if (isSignUp) {
+        // Sign Up - Create User & Save to Firestore
+        userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await saveUserToFirestore(userCredential.user);
+        console.log("User signed up:", userCredential.user);
+      } else {
+        // Sign In - Check if user exists
+        userCredential = await signInWithEmailAndPassword(auth, email, password);
+        console.log("User signed in:", userCredential.user);
+      }
+      setUser(userCredential.user);
+    } catch (error) {
+      console.error("Authentication Error:", error.message);
+      setErrorMessage(error.message); // Show error in UI
+    }
+  };
+
+  // Google Sign-In
+  const handleGoogleLogin = async () => {
+    const loggedInUser = await signInWithGoogle();
+    setUser(loggedInUser);
+    await saveUserToFirestore(loggedInUser);
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
+      <div className="bg-white p-6 rounded-lg shadow-md text-center">
+        <h1 className="text-2xl font-semibold mb-4">{isSignUp ? "Sign Up" : "Login"}</h1>
+
+        {user ? (
+          <div>
+            <p className="mb-2">Welcome, {user.displayName || user.email}</p>
+            {user.photoURL && <img src={user.photoURL} alt="Profile" className="rounded-full w-16 h-16 mx-auto mb-2" />}
+            <button
+              onClick={() => {
+                logOut();
+                setUser(null);
+              }}
+              className="bg-red-500 text-white px-4 py-2 rounded mt-2"
+            >
+              Logout
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* Email & Password Authentication */}
+            <input
+              type="email"
+              placeholder="Enter your email"
+              className="login-input"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <input
+              type="password"
+              placeholder="Enter your password"
+              className="login-input"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <button className="login-button" onClick={handleAuth}>
+              {isSignUp ? "Sign Up" : "Login"}
+            </button>
+
+            {/* OR Divider */}
+            <div className="or-divider">
+              <span>OR</span>
+            </div>
+
+            {/* Google Sign-In */}
+
+            <button onClick={handleGoogleLogin} className="bg-blue-500 text-white px-4 py-2 rounded">
+              Sign In with Google
+            </button>
+
+            {/* Toggle Sign-Up / Login */}
+            <p className="toggle-text" onClick={() => setIsSignUp(!isSignUp)}>
+              {isSignUp ? "Already have an account? Login" : "New user? Sign Up"}
+            </p>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default Login;
