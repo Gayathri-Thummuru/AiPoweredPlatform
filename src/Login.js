@@ -1,13 +1,9 @@
 import React, { useState } from "react";
-import { 
-  getAuth, 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword 
-} from "firebase/auth";
-import { signInWithGoogle, logOut } from "./firebaseConfig"; // Ensure correct path
+import { getAuth } from "firebase/auth";
+import { signInWithGoogle, logOut, signUpUser, loginUser } from "./firebaseConfig"; // Import the functions
 import { getFirestore, doc, setDoc } from "firebase/firestore";
-import app from "./firebaseConfig"; // Firebase config
-import "./Login.css"; // Import CSS
+import app from "./firebaseConfig";
+import "./Login.css";
 
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -17,43 +13,50 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
-    // Function to store user in Firestore
-    const saveUserToFirestore = async (user) => {
-      if (!user) return;
-  
-      try {
-        const userRef = doc(db, "users", user.uid);
-        await setDoc(userRef, {
-          uid: user.uid,
-          email: user.email,
-          createdAt: new Date(),
-        });
-        console.log("User saved in Firestore");
-      } catch (error) {
-        console.error("Error saving user:", error);
-      }
-    };
+  // Function to store user in Firestore
+  const saveUserToFirestore = async (user) => {
+    if (!user) return;
+
+    try {
+      const userRef = doc(db, "users", user.uid);
+      await setDoc(userRef, {
+        uid: user.uid,
+        email: user.email,
+        createdAt: new Date(),
+      });
+      console.log("User saved in Firestore");
+    } catch (error) {
+      console.error("Error saving user:", error);
+    }
+  };
 
   // Handle Email/Password Authentication
-  const [errorMessage, setErrorMessage] = useState("");
   const handleAuth = async () => {
-    try {
-      let userCredential;
-      if (isSignUp) {
-        // Sign Up - Create User & Save to Firestore
-        userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        await saveUserToFirestore(userCredential.user);
-        console.log("User signed up:", userCredential.user);
+    setErrorMessage("");
+    let result;
+
+    if (isSignUp) {
+      result = await signUpUser(email, password);
+    } else {
+      result = await loginUser(email, password);
+    }
+
+    if (result.error) {
+      if (result.error.includes("user-not-found")) {
+        setErrorMessage("No account found with this email.");
+      } else if (result.error.includes("wrong-password")) {
+        setErrorMessage("Incorrect password.");
+      } else if (result.error.includes("invalid-email")) {
+        setErrorMessage("Invalid email format.");
+      } else if (result.error.includes("email-already-in-use")) {
+        setErrorMessage("This email is already registered.");
       } else {
-        // Sign In - Check if user exists
-        userCredential = await signInWithEmailAndPassword(auth, email, password);
-        console.log("User signed in:", userCredential.user);
+        setErrorMessage(result.error);
       }
-      setUser(userCredential.user);
-    } catch (error) {
-      console.error("Authentication Error:", error.message);
-      setErrorMessage(error.message); // Show error in UI
+    } else {
+      setUser(result.user);
     }
   };
 
@@ -103,6 +106,7 @@ const Login = () => {
             <button className="login-button" onClick={handleAuth}>
               {isSignUp ? "Sign Up" : "Login"}
             </button>
+            {errorMessage && <p className="text-red-500 mt-2">{errorMessage}</p>}
 
             {/* OR Divider */}
             <div className="or-divider">
@@ -110,7 +114,6 @@ const Login = () => {
             </div>
 
             {/* Google Sign-In */}
-
             <button onClick={handleGoogleLogin} className="bg-blue-500 text-white px-4 py-2 rounded">
               Sign In with Google
             </button>

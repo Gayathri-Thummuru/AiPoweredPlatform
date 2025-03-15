@@ -1,9 +1,15 @@
 // firebaseConfig.js
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
+import { 
+  getAuth, 
+  GoogleAuthProvider, 
+  signInWithPopup, 
+  signOut, 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword 
+} from "firebase/auth";
 import { getAnalytics } from "firebase/analytics";
-import { getFirestore } from "firebase/firestore";
-
+import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyC5mLWls_DNEZ4kx9zmoOn_FgC5aBELSOg",
@@ -20,6 +26,7 @@ const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
+const db = getFirestore(app);
 
 // Google Sign-In Function
 export const signInWithGoogle = async () => {
@@ -40,30 +47,30 @@ export const logOut = async () => {
   }
 };
 
-// 🔹 Email/Password Sign-up
+// Email/Password Sign-up
 export const signUpUser = async (email, password) => {
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     await saveUserToFirestore(userCredential.user);
-    return userCredential.user;
+    return { user: userCredential.user, error: null };
   } catch (error) {
     console.error("Sign-up Error:", error.message);
-    return null;
+    return { user: null, error: error.message };
   }
 };
 
-// 🔹 Email/Password Login
+// Email/Password Login
 export const loginUser = async (email, password) => {
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    return userCredential.user;
+    return { user: userCredential.user, error: null };
   } catch (error) {
     console.error("Login Error:", error.message);
-    return null;
+    return { user: null, error: error.message };
   }
 };
 
-// 🔹 Save User to Firestore
+// Save User to Firestore
 const saveUserToFirestore = async (user) => {
   if (!user) return;
 
@@ -80,10 +87,5 @@ const saveUserToFirestore = async (user) => {
   }
 };
 
-
-
-const db = getFirestore(app);
-export { db };
-
-export { auth };
+export { db, auth };
 export default app;
